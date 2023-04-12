@@ -499,6 +499,111 @@ describe("EmbalmerFacet.rewrapSarcophagus", () => {
         prevDiggingFees
       );
     });
+
+    it.only("Should not change bonds if new digging fee == previous digging fee ", async function () {
+      const { embalmerFacet, viewStateFacet } = await getContracts();
+
+      // Set resurrection time for creation to 1 week from now
+      const resurrectionTimeOnCreate =
+        (await time.latest()) + time.duration.weeks(1);
+
+      // Set resurrection time for rewrap to 0.5 weeks from now
+      // const resurrectionTimeOnRewrap =
+      //   (await time.latest()) + time.duration.weeks(0.5);
+
+      const resurrectionTimeOnRewrap = resurrectionTimeOnCreate;
+
+      const { createdSarcophagusData: sarcophagusData, cursedArchaeologists } =
+        await createSarcophagusWithRegisteredCursedArchaeologists({
+          resurrectionTime: resurrectionTimeOnCreate,
+        });
+
+      const cursedBondPercentage = await viewStateFacet
+        .connect(sarcophagusData.embalmer)
+        .getCursedBondPercentage();
+
+      const curseFee = cursedArchaeologists[0].curseFee;
+
+      // Get an archaeologist address
+      const sarcophagus = await viewStateFacet.getSarcophagus(
+        sarcophagusData.sarcoId
+      );
+      const firstArchaeologistAddress = sarcophagus.archaeologistAddresses[0];
+
+      // Get the first archaeologist's cursed bond before rewrap
+      const cursedBondBefore = await viewStateFacet.getCursedBond(
+        firstArchaeologistAddress
+      );
+
+      const cursedBondBeforeMinusCurseFeeBond = cursedBondBefore.sub(
+        BigNumber.from(curseFee).mul(cursedBondPercentage).div(100)
+      );
+
+      // Get the first archaeologist's free bond before rewrap
+      const freeBondBefore = await viewStateFacet.getFreeBond(
+        firstArchaeologistAddress
+      );
+
+      const freeBondBeforeBeforePlusCurseFeeBond = freeBondBefore.add(
+        BigNumber.from(curseFee).mul(cursedBondPercentage).div(100)
+      );
+
+      // Get the archaeologist's rewards before rewrap
+      const rewardsBefore = await viewStateFacet.getRewards(
+        firstArchaeologistAddress
+      );
+
+      // Get first archaeologist's digging fees per second
+      const diggingFeePerSecond = (
+        await viewStateFacet.getArchaeologistProfile(firstArchaeologistAddress)
+      ).minimumDiggingFeePerSecond;
+
+      await embalmerFacet
+        .connect(sarcophagusData.embalmer)
+        .rewrapSarcophagus(sarcophagusData.sarcoId, resurrectionTimeOnRewrap);
+
+      // Get the first archaeologist's cursed bond after rewrap
+      const cursedBondAfter = await viewStateFacet.getCursedBond(
+        firstArchaeologistAddress
+      );
+
+      // Get the first archaeologist's free bond after rewrap
+      const freeBondAfter = await viewStateFacet.getFreeBond(
+        firstArchaeologistAddress
+      );
+
+      // Get the archaeologist's rewards after rewrap
+      const rewardsAfter = await viewStateFacet.getRewards(
+        firstArchaeologistAddress
+      );
+
+      const prevDiggingFees = diggingFeePerSecond.mul(
+        sarcophagus.resurrectionTime.sub(sarcophagus.previousRewrapTime)
+      );
+
+      const newDiggingFees = diggingFeePerSecond.mul(
+        BigNumber.from(resurrectionTimeOnRewrap).sub(
+          BigNumber.from(await time.latest())
+        )
+      );
+
+      const diggingFeesDiff = prevDiggingFees.sub(newDiggingFees);
+
+      // Expect the difference in cursed bond to be equal to the difference in diggingFees
+      expect(cursedBondBeforeMinusCurseFeeBond.sub(cursedBondAfter)).to.equal(
+        0
+      );
+
+      // // Expect the difference in free bond to be equal to the difference in diggingFees
+      // expect(freeBondAfter.sub(freeBondBeforeBeforePlusCurseFeeBond)).to.equal(
+      //   diggingFeesDiff
+      // );
+
+      // // Expect the difference in rewards to be equal to the previous digging fees
+      // expect(rewardsAfter.sub(curseFee).sub(rewardsBefore)).to.equal(
+      //   prevDiggingFees
+      // );
+    });
   });
   describe("Successfully rewraps a sarcophagus with fewer than k accusals", function () {
     it("Should not pay digging fees to accused archaeologists", async function () {

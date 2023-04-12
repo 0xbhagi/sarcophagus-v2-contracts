@@ -401,11 +401,13 @@ contract EmbalmerFacet {
                     }
 
                     // Increase the archaeologist's cursed bond using digging fees paid by the embalmer
-                    s.archaeologistProfiles[archaeologistAddresses[i]]
+                    s
+                        .archaeologistProfiles[archaeologistAddresses[i]]
                         .cursedBond += cursedBondIncrease;
 
                     // Rewards are now previous digging fees - difference
-                    s.archaeologistRewards[archaeologistAddresses[i]] += (prevDiggingFees - cursedBondIncrease);
+                    s.archaeologistRewards[archaeologistAddresses[i]] += (prevDiggingFees -
+                        cursedBondIncrease);
                 } else if (newDiggingFees < prevDiggingFees) {
                     // New digging fees are less than the previous digging fees, so some of the cursed bond can be unlocked
                     uint256 cursedBondDecrease = ((prevDiggingFees - newDiggingFees) *
@@ -434,7 +436,8 @@ contract EmbalmerFacet {
                 // If sarcophagus has not been rewrapped yet, pay out the curseFee and unlock the curseFee bond
                 if (!sarcophagus.isRewrapped) {
                     // Pay archaeologists the curse fee to their rewards
-                    s.archaeologistRewards[archaeologistAddresses[i]] += cursedArchaeologist.curseFee;
+                    s.archaeologistRewards[archaeologistAddresses[i]] += cursedArchaeologist
+                        .curseFee;
 
                     // Unlock the curseFee cursed bond by debiting the cursed bond and crediting free bond
                     LibBonds.decreaseCursedBond(
@@ -442,7 +445,8 @@ contract EmbalmerFacet {
                         ((cursedArchaeologist.curseFee * cursedBondPercentage) / 100)
                     );
 
-                    s.archaeologistProfiles[archaeologistAddresses[i]]
+                    s
+                        .archaeologistProfiles[archaeologistAddresses[i]]
                         .freeBond += ((cursedArchaeologist.curseFee * cursedBondPercentage) / 100);
                 }
             }
